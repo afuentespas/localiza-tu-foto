@@ -58,7 +58,7 @@ npm install
 Para arrancar la aplicación en modo desarrollo desde el navegador:
 
 ```bash
-npm run dev
+npm run start
 ```
 
 Después, abre en el navegador la URL que indique Vite, normalmente:
