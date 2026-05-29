@@ -1,0 +1,11 @@
+{
+  "appId": "es.afuentes.localizatufoto",
+  "appName": "Localiza tu foto",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 500
+    }
+  }
+}
