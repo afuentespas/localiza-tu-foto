@@ -83,15 +83,6 @@ Esto generará la carpeta `dist/`, que es la que utilizará Capacitor para la ap
 
 ## Uso con Capacitor
 
-### Primera configuración de Android
-
-Este paso solo es necesario la primera vez:
-
-```bash
-npm install @capacitor/android
-npx cap add android
-```
-
 ### Sincronizar cambios con Android
 
 Cada vez que hagas cambios en el proyecto y quieras llevarlos a Android:
@@ -99,6 +90,12 @@ Cada vez que hagas cambios en el proyecto y quieras llevarlos a Android:
 ```bash
 npm run build
 npx cap sync android
+```
+
+Si necesitas abrir Android Studio, puede ejecutar este comando desde la terminal:
+
+```bash
+npx cap open android
 ```
 
 ## Funcionamiento básico de la aplicación

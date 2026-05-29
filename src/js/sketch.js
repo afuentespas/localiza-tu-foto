@@ -3,7 +3,7 @@ import { Localizacion } from './localizacion.js';
 import { Camera } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
 
-// Función principal que encapsula toda la lógica de la librería p5.js
+// Función principal que encapsula toda la lógica de la aplicación con librería p5.js
 export function crearSketch() {
   return new p5((p) => {
 
