@@ -16,6 +16,7 @@ La app permite capturar una imagen con la cámara del dispositivo, obtener las c
 - Plugins de Capacitor:
   - **Camera**
   - **Geolocation**
+  - **Filesystem**
 
 ---
 
@@ -26,6 +27,7 @@ La app permite capturar una imagen con la cámara del dispositivo, obtener las c
 - Guardado local de cada localización con:
   - título
   - notas
+  - dirección
   - latitud
   - longitud
   - ruta de la imagen
@@ -119,6 +121,7 @@ Cuando el usuario pulsa el botón de tomar una fotografía:
 4. permite tomar una fotografía
 5. muestra una pantalla donde se visualiza:
    - la imagen capturada
+   - la dirección
    - la latitud
    - la longitud
    - un campo de título
@@ -138,6 +141,7 @@ Cada elemento del listado muestra:
 - miniatura de la imagen
 - título
 - notas
+- dirección
 - coordenadas
 
 Además, cada elemento puede editarse o eliminarse.
@@ -152,9 +156,10 @@ Cada localización contiene:
 
 - título
 - notas
+- dirección
 - latitud
 - longitud
-- ruta de la imagen
+- ruta relativa de la imagen
 
 ---
 
@@ -164,7 +169,7 @@ La aplicación necesita permisos para:
 
 - **cámara**
 - **ubicación**
-- **guardado de imágenes en galería** (según el sistema y configuración)
+- **guardado de ficheros en el dispositivo** 
 
 Si el usuario no concede permisos o tiene la geolocalización desactivada, la aplicación muestra un mensaje de error informativo.
 
@@ -179,6 +184,10 @@ Permite abrir la cámara del dispositivo y capturar la fotografía.
 ### Geolocation
 
 Permite obtener las coordenadas actuales del dispositivo.
+
+### Filesystem
+
+Permite gestionar el sistema de ficheros del dispositivo.
 
 ---
 
@@ -202,6 +211,7 @@ Si todo se realiza correctamente, la app te llevará a la pantalla de guardado. 
 Después de hacer la fotografía, accederás a una pantalla en la que podrás revisar la imagen capturada y completar la información de la localización. En esta vista se muestran:
 
 - la fotografía tomada,
+- la dirección, 
 - la latitud,
 - la longitud,
 - un campo para el título,
@@ -221,6 +231,7 @@ En esta pantalla se muestra una tarjeta por cada localización almacenada. Cada 
 - la imagen asociada,
 - el título,
 - las notas,
+- la dirección,
 - la latitud,
 - y la longitud.
 
@@ -232,6 +243,7 @@ Al pulsarlo, la aplicación reutiliza la misma pantalla de guardado, pero cargan
 - imagen,
 - título,
 - notas,
+- dirección
 - latitud,
 - longitud.
 
@@ -248,3 +260,7 @@ Al hacerlo, la aplicación:
 - actualiza el almacenamiento local,
 - vuelve a generar el listado,
 - y muestra un mensaje de confirmación indicando que la localización se ha borrado correctamente.
+
+## Capturas de pantalla
+
+![Capturas de pantalla de Localiza tu foto](docs/localiza-tu-foto.gif)

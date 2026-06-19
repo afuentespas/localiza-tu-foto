@@ -2,6 +2,8 @@ import p5 from 'p5';
 import { Localizacion } from './localizacion.js';
 import { Camera } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 // Función principal que encapsula toda la lógica de la aplicación con librería p5.js
 export function crearSketch() {
@@ -14,7 +16,9 @@ export function crearSketch() {
     let botonListaFotografiasGuardadas; // Botón para navegar al listado de localizaciones guardadas.
     let imagenTomada; // Elemento donde se muestra la fotografía tomada.
     let inputTitulo; // Campo de entrada para el título de la localización.
+    let inputOcultoRutaImagen;
     let textAreaNotas; // Campo de entrada para las notas asociadas a la localización.
+    let contenedorDireccion;
     let contenedorLatitud; // Contenedor donde se muestra la latitud.
     let contenedorLongitud; // Contenedor donde se muestra la longitud.
     let botonGuardarLocalizacion; // Botón para guardar una nueva localización.
@@ -27,6 +31,9 @@ export function crearSketch() {
     let contenedorCanvasResumen; // Contenedor del resumen mostrado en la pantalla principal.
     let canvasResumen; // Referencia al canvas creado con p5.js.
     let localizacionesGuardadas = []; // Array que almacena todas las localizaciones guardadas por el usuario.
+    let imagenGuardada;
+
+    const URL_API = `https://nominatim.openstreetmap.org/reverse?format=jsonv2`;
 
     p.setup = () => {
       // Llamada a la función que gestiona la vinculación de los elementos creador en el DOM
@@ -59,6 +66,8 @@ export function crearSketch() {
       imagenTomada = p.select('#imagen-tomada');
       inputTitulo = p.select('#titulo');
       textAreaNotas = p.select('#notas');
+      inputOcultoRutaImagen = p.select('#rutaImagen');
+      contenedorDireccion = p.select('#direccion');
       contenedorLatitud = p.select('#latitud');
       contenedorLongitud = p.select('#longitud');
       botonGuardarLocalizacion = p.select('#guardar-localizacion');
@@ -110,26 +119,30 @@ export function crearSketch() {
         // Abre la cámara del dispositivo y toma una fotografía.
         const foto = await Camera.takePhoto({
           quality: 90,
-          saveToGallery: true,
-          includeMetadata: true,
+          includeMetadata: true
         });
+        // Guardamos la foto en el Filesystem
+        imagenGuardada = await guardarImagenEnFilesystem(foto);
+        // Consultamos a la API y obtenemos una dirección normalizada.
+        const direccionNormalizada = await obtenerDireccionNormalizada(posicion);
         // Se pasa a la pantalla de guardado con la imagen tomada y la posición actual.
-        establecerPantallaGuardarLocalizacion(foto.webPath, posicion);
+        establecerPantallaGuardarLocalizacion(imagenGuardada, posicion, direccionNormalizada);
       } catch (error) {
-         // Normalmente el error que se puede dar en este caso es por permisos de ubicación, pero tendría que dejar
-         // esto de una manera más genérica por si produce cualquier otro problema. Lo trabajaré para la siguiente entrega.
-        crearMensajeAlerta('Error', 'Por favor, activa y concede los permisos de ubicación para usar la aplicación.', true, pantallaInicio);
+        // Cualquier error que se produzca durante el proceso, se mostrará el mensaje por pantalla.
+        crearMensajeAlerta('Error', error, true, pantallaInicio);
       }
     }
 
     // Función que prepara la pantalla de guardado de una nueva localización.
     // Limpia todos los campos, carga la imagen tomada y establece las coordenadas obtenidas.
-    function establecerPantallaGuardarLocalizacion(fotoPath, posicion) {
+    function establecerPantallaGuardarLocalizacion(imagen, posicion, direccion) {
       botonVolverInicio.show();
       botonVolverAlListadoLocalizaciones.hide();
-      imagenTomada.attribute('src', fotoPath).attribute('alt', 'Imagen tomada');
+      imagenTomada.attribute('src', imagen.webPath).attribute('alt', 'Imagen tomada');
+      inputOcultoRutaImagen.value(imagen.rutaRelativa);
       inputTitulo.value('');
       textAreaNotas.value('');
+      contenedorDireccion.html(direccion);
       contenedorLatitud.html(posicion.coords.latitude);
       contenedorLongitud.html(posicion.coords.longitude);
       pantallaInicio.hide();
@@ -143,13 +156,16 @@ export function crearSketch() {
 
     // Función que prepara la pantalla de edición de una localización existente.
     // Rellena los campos con la información guardada previamente del objeto Localización seleccionado por el usuario.
-    function establecerPantallaEditarLocalizacion(indice) {
+    async function establecerPantallaEditarLocalizacion(indice) {
       botonVolverInicio.hide();
       botonVolverAlListadoLocalizaciones.show();
       let localizacion = localizacionesGuardadas[indice];
-      imagenTomada.attribute('src', localizacion.rutaImagen).attribute('alt', 'Imagen tomada');
+      const imagen = await obtenerWebPath(localizacion.rutaImagen);
+      imagenTomada.attribute('src', imagen).attribute('alt', 'Imagen tomada');
       inputTitulo.value(localizacion.titulo);
+      inputOcultoRutaImagen.value(localizacion.rutaImagen);
       textAreaNotas.value(localizacion.notas);
+      contenedorDireccion.html(localizacion.direccion);
       contenedorLatitud.html(localizacion.latitud);
       contenedorLongitud.html(localizacion.longitud);
       pantallaInicio.hide();
@@ -192,7 +208,7 @@ export function crearSketch() {
     // Si no se recibe un índice numérico, se interpreta como una nueva localización.
     // Si se recibe un índice, se actualiza la localización existente en esa posición.
     function guardarLocalizacion(indice) {
-      let localizacion = new Localizacion(inputTitulo.value(), textAreaNotas.value(), contenedorLatitud.html(), contenedorLongitud.html(), imagenTomada.attribute('src'));
+      let localizacion = new Localizacion(inputTitulo.value(), textAreaNotas.value(), contenedorLatitud.html(), contenedorLongitud.html(), inputOcultoRutaImagen.value(), contenedorDireccion.html());
       limpiarMensajesAlerta();
       // Comprobamos que si el índice es un número.
       if (typeof indice !== 'number') {
@@ -218,19 +234,22 @@ export function crearSketch() {
     // Función responsable de recorrer el array de localizaciones guardadas y genera una tarjeta visual por cada una.
     // Cada tarjeta incluye imagen, texto descriptivo y botón de acceso a la edición.
     function crearTarjetasLocalizaciones() {
-      localizacionesGuardadas.forEach((localizacion, indice) => {
+      localizacionesGuardadas.forEach(async (localizacion, indice) => {
         // Tarjeta contenedora de la localización.
         let tarjeta = p.createDiv().class('flex overflow-hidden rounded-2xl bg-slate-900 shadow-lg shadow-black/20 mb-4');
 
         // Bloque de la imagen.
         let bloqueImagen = p.createDiv().class('w-25 shrink-0 bg-slate-800');
-        let imagen = p.createImg(localizacion.rutaImagen, localizacion.titulo).class('h-full w-full object-cover');
+        // Obtenemos el web path de la imagen a partir de la ruta relativa para mostrarla por pantalla.
+        const img = await obtenerWebPath(localizacion.rutaImagen)
+        let imagen = p.createImg(img, localizacion.titulo).class('h-full w-full object-cover');
         bloqueImagen.child(imagen);
         // Bloque de texto de la tarjeta.
         let bloqueTexto = p.createDiv().class('min-w-0 flex-1 p-3');
         bloqueTexto.child(p.createP(localizacion.titulo).class('truncate text-base font-semibold text-white'));
-        bloqueTexto.child(p.createP(localizacion.notas).class('mt-1 text-sm text-slate-300'));
-        bloqueTexto.child(p.createP(`Lat: ${localizacion.latitud}`).class('mt-2 text-xs text-slate-400'));
+        bloqueTexto.child(p.createP(localizacion.notas).class('mt-1 text-sm text-slate-400'));
+        bloqueTexto.child(p.createP(localizacion.direccion).class('mt-2 pt-2 text-sm text-slate-300 border-t border-slate-400'));
+        bloqueTexto.child(p.createP(`Lat: ${localizacion.latitud}`).class('mt-2 pt-2 text-xs text-slate-400 border-t border-slate-400'));
         bloqueTexto.child(p.createP(`Lng: ${localizacion.longitud}`).class('text-xs text-slate-400'));
         // Bloque que contiene el botón de edición.
         let bloqueEditar = p.createDiv().class('flex items-center justify-center px-4');
@@ -253,6 +272,7 @@ export function crearSketch() {
     // Función que gestiona la eliminación de una localización del array, actualiza el almacenamiento local
     // y muestra una alerta informativa.
     function eliminarLocalizacion(indice) {
+      borrarImagenDelFilesystem(localizacionesGuardadas[indice].rutaImagen);
       const titulo = localizacionesGuardadas[indice].titulo;
       localizacionesGuardadas.splice(indice, 1);
       p.storeItem('localizaciones', localizacionesGuardadas);
@@ -263,7 +283,7 @@ export function crearSketch() {
 
     // Función generica y reutilizable para crear mensajes de alerta dentro de la aplicación.
     function crearMensajeAlerta(titulo, mensaje, esError, pantalla) {
-       // Se buscan los elementos internos del bloque de alerta de la pantalla actual.
+      // Se buscan los elementos internos del bloque de alerta de la pantalla actual.
       const bloqueAlertaPantalla = p.select('.bloque-alerta', pantalla.elt);
       const tituloAlerta = p.select('.titulo-alerta', bloqueAlertaPantalla);
       const mensajeAlerta = p.select('.mensaje-alerta', bloqueAlertaPantalla);
@@ -283,7 +303,7 @@ export function crearSketch() {
         tituloAlerta.addClass('text-red-200');
         mensajeAlerta.addClass('text-red-100/80');
       }
-       // Se actualiza el contenido textual de la alerta.
+      // Se actualiza el contenido textual de la alerta.
       tituloAlerta.html(titulo);
       mensajeAlerta.html(mensaje);
       // Mostramos el bloque de alerta en la pantalla correspondiente.
@@ -308,7 +328,7 @@ export function crearSketch() {
     }
 
     // Función que dibuja una animación informativa en la pantalla principal.
-    function animacionInformativaPantallaPrincipal(){
+    function animacionInformativaPantallaPrincipal() {
       p.background(2, 6, 23);
       const cx = p.width / 2;
       const cy = p.height / 2;
@@ -347,6 +367,79 @@ export function crearSketch() {
         p.fill(103, 232, 249, 180);
         p.ellipse(x, y, 8, 8);
       }
+    }
+
+    // Función encargada de consultar a la API de Nominatim y obtener un texto normalizado a partir de las coordenadas obtenidas.
+    async function obtenerDireccionNormalizada(posicion) {
+      // Agregamos las coordenadas por parametros a la URL de la API
+      const url = URL_API + `&lat=${posicion.coords.latitude}&lon=${posicion.coords.longitude}`;
+      try {
+        // Ejecutamos la función httpGet para realizar la llamada asíncrona a la API.
+        const respuesta = await p.httpGet(url, 'json');
+        const objetoDireccion = respuesta.address;
+        let datosDireccion = [];
+        let direccionNormalizada = "Desconocido";
+        // Si existe el objeto de la dirección, construimos la dirección en función de los elementos hijos que contenga el json.
+        if (objetoDireccion) {
+          datosDireccion.push(objetoDireccion.road);
+          datosDireccion.push(objetoDireccion.house_number);
+          datosDireccion.push(objetoDireccion.town || objetoDireccion.municipality || objetoDireccion.city || objetoDireccion.village);
+          datosDireccion.push(objetoDireccion.postcode);
+          datosDireccion.push(objetoDireccion.state || objetoDireccion.region);
+          datosDireccion.push(objetoDireccion.country);
+          datosDireccion = datosDireccion.filter(elemento => elemento && elemento.trim() !== '');
+          direccionNormalizada = datosDireccion.join(', ');
+        }
+        return direccionNormalizada;
+      }
+      catch (error) {
+        throw new Error('Error al consultar la API:', error);
+      }
+    }
+
+    // Función encarga de guardar las fotografías con el plugin Filesystem.
+    async function guardarImagenEnFilesystem(foto) {
+      const rutaOriginal = foto.uri;
+      if (!rutaOriginal) {
+        throw new Error('No se ha podido obtener la ruta original de la imagen.');
+      }
+      // Creamos una ruta con nombre del fichero de la imagen. Usamos la fecha del momento para evitar sobreescrituras.
+      const nombreArchivo = `fotos/foto_${Date.now()}.${foto.metadata?.format}`;
+      // Leemos el archivo de la imagen original a partir de su ruta.
+      const archivoLeido = await Filesystem.readFile({
+        path: rutaOriginal
+      });
+
+      // Guardamos una copia del archivo leído en el sistema de archivos.
+      const archivoGuardado = await Filesystem.writeFile({
+        path: nombreArchivo,
+        data: archivoLeido.data,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+      // Retornamos la ruta relativa y la ruta web de la imagen para poder mostrarla por pantalla.
+      return {
+        rutaRelativa: nombreArchivo,
+        webPath: Capacitor.convertFileSrc(archivoGuardado.uri)
+      };
+    }
+
+    // Función responsable de obtener una ruta web de la imagen a partir de la ruta relativa.
+    async function obtenerWebPath(rutaRelativa) {
+      const archivo = await Filesystem.getUri({
+        path: rutaRelativa,
+        directory: Directory.Documents
+      });
+
+      return Capacitor.convertFileSrc(archivo.uri);
+    }
+
+    // Función que se encarga de borrar del sistema de ficheros la imagen de la localización borrada.
+    async function borrarImagenDelFilesystem(rutaImagen) {
+      await Filesystem.deleteFile({
+        path: rutaImagen,
+        directory: Directory.Documents
+      });
     }
 
   });

@@ -38,7 +38,10 @@ document.querySelector('#app').innerHTML = `
         <input id="titulo" class="w-full border mt-1.5 mb-4 border-gray-500/30 outline-none rounded py-2.5 px-3 bg-slate-900">
         <label class="font-medium" for="notas">Notas</label>
         <textarea rows="2" id="notas" class="w-full resize-none border mt-1.5 mb-4 border-gray-500/30 outline-none rounded py-2.5 px-3 bg-slate-900"></textarea>
-        <p class="font-medium">Coordenadas</p>
+        <p class="font-medium">Dirección</p>
+        <input type="hidden" id="rutaImagen" name="rutaImagen"/>
+        <p id="direccion"></p>
+        <p class="font-medium mt-5">Coordenadas</p>
         <div><span class="mr-10"><strong class="text-blue-300 mr-3">Latitud</strong><span id="latitud"></span></span><span><strong class="text-blue-300 mr-3">Longitud</strong><span id="longitud"></span></span></div>
         <div class="mt-5 flex gap-3">
             <button id="guardar-localizacion" class="w-full text-xl rounded-md bg-cyan-500 py-2 px-4 border border-transparent text-center text-white transition-all shadow-md hover:shadow-lg focus:bg-blue-700 focus:shadow-none active:bg-blue-700 hover:bg-blue-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none">Guardar</button>

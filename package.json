@@ -16,6 +16,7 @@
     "@capacitor/android": "^8.3.4",
     "@capacitor/camera": "latest",
     "@capacitor/core": "^8.3.4",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/ios": "^8.3.4",
     "@capacitor/splash-screen": "latest",
